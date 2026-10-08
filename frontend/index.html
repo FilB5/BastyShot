@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>BastyShot</title>
+    <link rel="stylesheet" href="/src/style.css">
+    <script src="/assets/fabric.min.js"></script>
+</head>
+<body>
+
+<!-- TOAST (Окно публикации) -->
+<div id="publish-toast-ui" style="display: none; width: 100vw; height: 100vh; background: #1e293b; color: #fff; flex-direction: column; justify-content: center; align-items: center; border-radius: 8px; overflow: hidden;">
+    <div id="toast-loading" style="display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 15px; box-sizing: border-box; width: 100%; height: 100%; justify-content: center;">
+        <div class="spinner" style="width: 30px; height: 30px; border-width: 3px;"></div>
+        <div id="toast-loading-text" style="font-size: 13px; font-weight: 500; text-align: center;">Подготовка...</div>
+        <button class="btn btn-secondary btn-sm toast-action-btn" id="toast-btn-cancel-loading" style="margin-top: 5px;">Отмена</button>
+    </div>
+    <div id="toast-success" style="display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; box-sizing: border-box; width: 100%; height: 100%;">
+        <div style="color: #10b981; font-size: 28px;">✅</div>
+        <div style="font-size: 13px; font-weight: 500;">Ссылка скопирована!</div>
+        <div style="display: flex; gap: 8px; margin-top: 5px;">
+            <button class="btn btn-secondary btn-sm toast-action-btn" id="toast-btn-open">Открыть</button>
+            <button class="btn btn-sm toast-action-btn" id="toast-btn-copy">Копировать</button>
+            <button class="btn btn-secondary btn-sm toast-close-btn" id="toast-btn-close">X</button>
+        </div>
+        <div class="toast-checkbox">
+            <input type="checkbox" id="toast-hide-success">
+            <label for="toast-hide-success">Больше не показывать при успехе</label>
+        </div>
+    </div>
+    <div id="toast-error" style="display: none; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 15px; box-sizing: border-box; width: 100%; height: 100%;">
+        <div style="color: #ef4444; font-size: 28px;">❌</div>
+        <div id="toast-error-text" style="font-size: 12px; text-align: center; white-space: pre-line; line-height: 1.4;">Ошибка загрузки</div>
+        <div style="display: flex; gap: 8px; margin-top: 5px;">
+            <button class="btn btn-secondary btn-sm toast-action-btn" id="toast-btn-retry">Повторить</button>
+            <button class="btn btn-secondary btn-sm toast-action-btn" id="toast-btn-error-cancel">Отмена</button>
+        </div>
+        <div class="toast-checkbox">
+            <input type="checkbox" id="toast-hide-error">
+            <label for="toast-hide-error">Больше не показывать ошибки</label>
+        </div>
+    </div>
+</div>
+
+<!-- ПАНЕЛЬ -->
+<div id="panel-ui">
+    <div class="panel-header drag-region">
+        <div class="panel-title">BastyShot</div>
+        <button class="btn-close no-drag" id="btn-close-panel">X</button>
+    </div>
+    <div class="panel-body">
+        <div class="btn-joxi no-drag" id="btn-frag"><svg viewBox="0 0 24 24"><path d="M3 3h18v18H3V3zm2 2v14h14V5H5zm4 4h6v6H9V9z"/></svg><span>Фрагмент</span></div>
+        <div class="btn-joxi no-drag" id="btn-full"><svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM5 19V5h14v14H5z"/></svg><span>Экран</span></div>
+        <div class="btn-joxi no-drag" id="btn-history"><svg viewBox="0 0 24 24"><path d="M13 3a9 9 0 0 0-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13, 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0 0 13 21a9 9 0 0 0 0-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg><span>История</span></div>
+        <div class="btn-joxi no-drag" id="btn-settings"><svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94 0 .31.04.64.09.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.61l-2.03-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg><span>Настройки</span></div>
+    </div>
+</div>
+
+<!-- НАСТРОЙКИ -->
+<div id="settings-ui" style="display: none;">
+    <div class="settings-titlebar drag-region">
+        <div class="settings-title">BastyShot - Настройки</div>
+        <button class="btn-close no-drag" id="btn-close-settings">X</button>
+    </div>
+        <div class="settings-tabs">
+            <div class="tab-btn active" data-tab="storage">Хранилище</div>
+            <div class="tab-btn" data-tab="settings">Настройки</div>
+            <div class="tab-btn" data-tab="hotkeys">Горячие клавиши</div>
+            <div class="tab-btn" data-tab="ocr">OCR (Текст)</div>
+            <div class="tab-btn" data-tab="about">О программе</div>
+        </div>
+    <div class="settings-body">
+
+
+
+
+
+            <div id="tab-storage" class="tab-content">
+                <div class="settings-header">Хранилище скриншотов</div>
+                <div class="storage-layout">
+                    
+                    <div class="storage-left">
+                        <div class="form-group">
+                            <label class="form-label">Куда сохранять:</label>
+                            <div class="options-group">
+                                <label class="option"><input type="radio" name="storage" value="local"> Локально (на ПК)</label>
+                                <label class="option"><input type="radio" name="storage" value="ipfs"> Сеть IPFS (Зашифровано)</label>
+                                <label class="option"><input type="radio" name="storage" value="bastyon"> Сеть Bastyon</label>
+                                <label class="option"><input type="radio" name="storage" value="ftp"> FTP / SFTP</label>
+                                <label class="option"><input type="radio" name="storage" value="server"> Сервер проекта</label>
+                            </div>
+                        </div>
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label class="form-label">Локальная папка (для копий):</label>
+                            <div style="display: flex; gap: 8px;">
+                                <input type="text" id="savePathInput" class="form-input" readonly>
+                                <button class="btn btn-secondary btn-sm" id="btn-select-folder">Обзор...</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="storage-right">
+                        
+                        <div id="panel-local" class="storage-panel" style="display: none;">
+                            <div class="auth-card">
+                                <div class="auth-header">Локальное хранилище</div>
+                                <div class="auth-body" style="text-align: center; padding: 30px;">
+                                    <p style="color: var(--text-muted); font-size: 13px;">Скриншоты сохраняются только на жесткий диск. Загрузка в сеть недоступна.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="panel-ipfs" class="storage-panel" style="display: none;">
+                            <div class="auth-card">
+                                <div class="auth-header">Настройки IPFS (Pinata)</div>
+                                <div class="auth-body">
+                                    <div class="form-group">
+                                        <label class="form-label">Шлюз для просмотра ссылок:</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <select id="ipfsGatewaySelect" class="form-input">
+                                                <option value="https://dweb.link/ipfs/">dweb.link</option>
+                                                <option value="https://ipfs.io/ipfs/">ipfs.io</option>
+                                                <option value="https://gateway.pinata.cloud/ipfs/">gateway.pinata.cloud</option>
+                                                <option value="https://cloudflare-ipfs.com/ipfs/">Cloudflare</option>
+                                            </select>
+                                            <button class="btn btn-secondary btn-sm" id="btn-test-gateway">Проверить</button>
+                                        </div>
+                                        <div id="gateway-test-result" style="font-size: 12px; margin-top: 4px; min-height: 14px; color: var(--text-muted);"></div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label class="form-label">API ключ Pinata (JWT):</label>
+                                        <div style="display: flex; gap: 8px;">
+                                            <input type="password" id="pinataJWTInput" class="form-input" placeholder="eyJhbGciOiJIUzI1...">
+                                            <button class="btn btn-secondary btn-sm" id="btn-test-ipfs">Проверить</button>
+                                        </div>
+                                    </div>
+                                    <div class="form-group" style="margin-top: 20px; border-top: 1px solid var(--border); padding-top: 15px;">
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <label class="option" style="flex: 1;"><input type="checkbox" name="proxy"> Использовать прокси (весь трафик)</label>
+                                            <button class="btn btn-secondary btn-sm" id="btn-setup-proxy">Настроить</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="panel-bastyon" class="storage-panel" style="display: none;">
+                            <div class="auth-card">
+                                <div class="auth-header">Аккаунт BastyShot</div>
+                                <div class="auth-body">
+                                    <div id="loginArea">
+                                        <div class="form-group">
+                                            <label class="form-label">Ваш Bastyon Address:</label>
+                                            <div style="display: flex; gap: 8px;">
+                                                <input type="text" id="usernameInput" class="form-input" placeholder="PTRhoFpi4D3FAs...">
+                                                <button class="btn btn-secondary btn-sm" id="btn-check-account">Войти</button>
+                                            </div>
+                                            <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">🔒 Безопасно. Это ваш публичный адрес. Приватный ключ не нужен!</small>
+                                        </div>
+                                    </div>
+                                    <div id="accountInfo" style="display: none;">
+                                        <div class="auth-user">
+                                            <div class="user-avatar" id="avatarLetter">U</div>
+                                            <div class="user-info">
+                                                <div class="user-name" id="accountAddress">Не авторизован</div>
+                                                <div class="user-email" id="accountPlan">Тариф: Free</div>
+                                            </div>
+                                            <button class="btn btn-secondary btn-sm" id="btn-logout">Выйти</button>
+                                        </div>
+                                        <div class="limit-info">
+                                            <div style="display: flex; justify-content: space-between; font-size: 12px; color: var(--text-muted);">
+                                                <span id="storageUsedText">Занято: 0 МБ</span>
+                                                <span id="storageLimitText">Из 0 МБ</span>
+                                            </div>
+                                            <div class="progress-bg"><div class="progress-fill" id="storageBar" style="width: 0%;"></div></div>
+                                            <button class="btn btn-pro btn-sm" id="btn-buy-pro" style="margin-top: 10px; width: 100%;">Купить Pro (1 ГБ)</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="panel-ftp" class="storage-panel" style="display: none;">
+                            <div class="auth-card">
+                                <div class="auth-header">Настройки FTP</div>
+                                <div class="auth-body">
+                                    <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Настройки FTP будут добавлены в следующей версии.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="panel-server" class="storage-panel" style="display: none;">
+                            <div class="auth-card">
+                                <div class="auth-header">Сервер BastyShot</div>
+                                <div class="auth-body">
+                                    <p style="color: var(--text-muted); font-size: 13px; text-align: center; padding: 20px;">Файлы будут загружены на сервера экосистемы Bastyon. Требуется авторизация.</p>
+                                    <div id="loginAreaServer" style="text-align: center;">
+                                        <button class="btn" id="btn-check-account-server" style="width: 100%;">Войти через Bastyon</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div> <!-- /storage-right -->
+                </div> <!-- /storage-layout -->
+            </div> <!-- /tab-storage -->
+
+
+
+        <div id="tab-settings" class="tab-content" style="display: none;">
+            <div class="settings-header">Захват экрана</div>
+            <div class="form-group">
+                <label class="form-label">Монитор для захвата:</label>
+                <select id="monitorSelect" class="form-input">
+                    <option value="-1">Все мониторы</option>
+                </select>
+            </div>
+            <div class="settings-header" style="margin-top: 20px;">Интерфейс</div>
+            <div class="form-group">
+                <button class="btn btn-secondary btn-sm" id="btn-reset-toolbar">Сбросить позицию панели инструментов</button>
+            </div>
+            <div class="settings-header" style="margin-top: 20px;">Настройки изображения</div>
+            <div class="form-group">
+                <label class="form-label">Качество изображения:</label>
+                <div class="options-group">
+                    <label class="option"><input type="radio" name="quality" value="low"> Низкое (максимальное сжатие)</label>
+                    <label class="option"><input type="radio" name="quality" value="med"> Среднее (баланс)</label>
+                    <label class="option"><input type="radio" name="quality" value="high"> Высокое (без потерь)</label>
+                </div>
+            </div>
+            <div class="settings-header" style="margin-top: 20px;">Дополнительно</div>
+            <div class="options-group">
+                <label class="option"><input type="checkbox" name="autostart"> Запускать программу вместе с системой</label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label class="option" style="flex: 1;"><input type="checkbox" name="proxy"> Использовать прокси (весь трафик)</label>
+                    <button class="btn btn-secondary btn-sm" id="btn-setup-proxy">Настроить</button>
+                </div>
+                <label class="option"><input type="checkbox" name="localcopy"> Сохранять копию скриншота в выбранной папке</label>
+                <label class="option"><input type="checkbox" name="showupload"> Отображать процесс загрузки на сервер</label>
+                <label class="option"><input type="checkbox" name="showinfo"> После окончания загрузки выводить информационное окно</label>
+            </div>
+            
+            <!-- НОВОЕ: Сохранение ключа в истории -->
+            <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border);">
+                <label class="option"><input type="checkbox" name="saveKeyInHistory" checked> Сохранять ключ расшифровки (#) в истории</label>
+                <small style="color: #ef4444; font-size: 11px; margin-top: 4px; display: block; padding-left: 24px;">
+                    ⚠️ Внимание! Если выключить эту опцию, и вы потеряете ссылку из буфера обмена, вы больше не сможете расшифровать скриншот!
+                </small>
+            </div>
+
+            <!-- НОВОЕ: Автоочистка логов (ТЕПЕРЬ ВНУТРИ ВКЛАДКИ НАСТРОЙКИ) -->
+            <div class="form-group" style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
+                <label class="form-label">Автоочистка файла логов:</label>
+                <select id="logCleanupSelect" class="form-input">
+                    <option value="0">Никогда (хранить всегда)</option>
+                    <option value="1">Каждый 1 час</option>
+                    <option value="12">Каждые 12 часов</option>
+                    <option value="24">Каждый день</option>
+                    <option value="168">Каждую неделю (7 дней)</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block; padding-left: 24px;">Если программа работает долго, логи могут занимать место. Включите автоочистку, чтобы удалять их раз в указанное время.</small>
+            </div>
+        </div>
+
+
+        <div id="tab-hotkeys" class="tab-content" style="display: none;">
+            <div class="settings-header">Горячие клавиши</div>
+            <div class="form-group">
+                <label class="form-label">Сделать фрагмент экрана:</label>
+                <input type="text" id="hotkeyFrag" class="form-input" value="Ctrl + Shift + S">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Сделать полный экран:</label>
+                <input type="text" id="hotkeyFull" class="form-input" value="Ctrl + Shift + F">
+            </div>
+        </div>
+        <div id="tab-ocr" class="tab-content" style="display: none;">
+            <div class="settings-header">Распознавание текста (OCR)</div>
+            <div class="form-group">
+                <label class="option"><input type="checkbox" name="ocrEnabled" checked> Включить инструмент OCR</label>
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block; padding-left: 24px;">Если выключено, кнопка исчезнет из панели редактора.</small>
+            </div>
+            <div class="form-group" style="margin-top: 20px;">
+                <label class="form-label">Качество распознавания:</label>
+                <select id="ocrModelSelect" class="form-input">
+                    <option value="fast">Стандартная (Быстрая, ~2 МБ)</option>
+                    <option value="best">Точная (Для фото и мелкого текста, ~15 МБ)</option>
+                </select>
+                <small style="color: var(--text-muted); font-size: 11px; margin-top: 4px; display: block;">При смене модели старые словари будут удалены, а новые скачаются при следующем распознавании.</small>
+            </div>
+        </div>
+
+            <!-- ВКЛАДКА: О ПРОГРАММЕ -->
+            <div id="tab-about" class="tab-content" style="display: none; text-align: center;">
+                <div style="margin-bottom: 20px;">
+                    <h2 style="margin-bottom: 5px; color: var(--text-main);">BastyShot</h2>
+                    <p style="color: var(--text-muted); font-size: 14px;">Версия: <strong id="app-version">1.0.0</strong></p>
+                </div>
+                
+                <button class="btn" id="btn-check-updates" style="margin-bottom: 15px;">Проверить обновления</button>
+                
+                <div id="update-status" style="font-size: 13px; color: var(--text-muted); min-height: 20px; margin-bottom: 20px;"></div>
+                
+                <div style="text-align: left; background: var(--bg-main); padding: 15px; border-radius: 10px; margin-bottom: 20px;">
+                    <strong style="color: var(--text-main);">Краткая инструкция:</strong><br>
+                    • Левый клик по иконке в трее — быстрый скриншот фрагмента.<br>
+                    • Правый клик по иконке в трее — открытие меню.<br>
+                    • Горячие клавиши настраиваются во вкладке "Клавиши".
+                </div>
+
+                <p style="color: var(--text-muted); font-size: 12px; line-height: 1.5;">
+                    Децентрализованный скриншотер с Zero-Knowledge шифрованием.<br>
+                    Создано для экосистемы Bastyon.
+                </p>
+            </div>
+
+    </div>
+    <div class="settings-footer">
+        <button class="btn btn-secondary" id="btn-reset">По умолчанию</button>
+        <button class="btn btn-secondary" id="btn-cancel-settings">Отменить</button>
+        <button class="btn" id="btn-apply-settings">Сохранить</button>
+    </div>
+</div>
+
+<!-- ОКНО ИСТОРИИ -->
+<div id="history-ui" style="display: none; flex-direction: column; width: 100vw; height: 100vh; background: #ffffff;">
+    <div class="settings-titlebar drag-region">
+        <div class="settings-title">История скриншотов</div>
+        <button class="btn-close no-drag" id="btn-close-history">X</button>
+    </div>
+    <div class="history-toolbar">
+        <button class="tab-btn active" data-filter="all">Все</button>
+        <button class="tab-btn" data-filter="local">Локальные</button>
+        <button class="tab-btn" data-filter="ipfs">IPFS</button>
+            <button class="btn btn-secondary btn-sm" id="btn-open-folder" style="margin-left: auto;">📂 Открыть папку</button>
+    </div>
+    <div class="history-body" style="flex: 1; padding: 20px; overflow-y: auto; background: #f8fafc;">
+        <div id="gallery-grid" class="gallery-grid-full" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px;">
+            <div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #64748b;">Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ОВЕРЛЕЙ -->
+<div id="overlay-ui" style="display: none;">
+    <div id="capture-border"></div>
+    <img id="bg-screenshot" src="">
+    <div id="dim-top" class="dim-area"></div>
+    <div id="dim-bottom" class="dim-area"></div>
+    <div id="dim-left" class="dim-area"></div>
+    <div id="dim-right" class="dim-area"></div>
+    <canvas id="editor-canvas"></canvas>
+    <div id="selection-box">
+        <div class="sel-move-handle" title="Перетащить область"></div>
+        <div class="sel-handle" id="handle-tl"></div>
+        <div class="sel-handle" id="handle-tr"></div>
+        <div class="sel-handle" id="handle-bl"></div>
+        <div class="sel-handle" id="handle-br"></div>
+        <div id="size-indicator">0 x 0</div>
+    </div>
+    <div id="toolbar">
+        <div id="dragHandle" class="drag-handle" title="Перетащить">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg>
+        </div>
+
+
+
+            <div class="toolbar-content">
+                <!-- ПЕРВЫЙ РЯД: Инструменты -->
+                <div class="toolbar-row">
+                    <button class="tool-btn" data-tool="draw" title="Карандаш"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><path d="M2 2l7.586 7.586"/><circle cx="11" cy="11" r="2"/></svg></button>
+                    <button class="tool-btn" data-tool="marker" title="Маркер"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 11l-6 6v3h3l6-6m-3-3l4-4 3 3-4 4m-3-3l3 3"/></svg></button>
+                    <button class="tool-btn" data-tool="arrow" title="Стрелка"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/><polyline points="9 5 19 5 19 15"/></svg></button>
+                    <button class="tool-btn" data-tool="line" title="Линия"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="19" x2="19" y2="5"/></svg></button>
+                    <button class="tool-btn" data-tool="rect" title="Квадрат"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/></svg></button>
+                    <button class="tool-btn" data-tool="oval" title="Овал"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg></button>
+                    <button class="tool-btn" data-tool="blur" title="Размытие"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3v18M3 12h18"/></svg></button>
+                    <button class="tool-btn" data-tool="mosaic" title="Мозаика"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg></button>
+                    <button class="tool-btn" data-tool="text" title="Текст"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7V4h16v3M9 20h6M12 4v16"/></svg></button>
+                    <button class="tool-btn" data-tool="number" title="Нумерация"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><text x="12" y="16" text-anchor="middle" font-size="12" font-weight="bold" fill="currentColor" stroke="none">1</text></svg></button>
+                    
+                    <button class="tool-btn" id="btn-ocr" title="Распознать текст (OCR)">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/>
+                        </svg>
+                    </button>
+                    <button class="tool-btn" id="btn-translate" title="Перевести на русский">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 8h14M5 8l3 3M5 8l3-3"/><path d="M19 16h-14M19 16l-3 3M19 16l-3-3"/><path d="M9 4v16M15 4v16"/>
+                        </svg>
+                    </button>
+
+                    <button class="tool-btn" data-tool="select" title="Выбрать/Удалить (Del)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"><path d="M4 4l7.07 17 2.51-7.39L21 11.07z"/></svg></button>
+                </div>
+
+                <!-- ВТОРОЙ РЯД: Цвета, Размер, Действия -->
+                <div class="toolbar-row">
+                    <!-- ПАЛИТРА -->
+                    <div class="color-palette-group">
+                        <button type="button" class="color-swatch active" data-color="#ff0000" style="background: #ff0000;" title="Красный"></button>
+                        <button type="button" class="color-swatch" data-color="#f59e0b" style="background: #f59e0b;" title="Желтый"></button>
+                        <button type="button" class="color-swatch" data-color="#10b981" style="background: #10b981;" title="Зеленый"></button>
+                        <button type="button" class="color-swatch" data-color="#3b82f6" style="background: #3b82f6;" title="Синий"></button>
+                        <button type="button" class="color-swatch" data-color="#000000" style="background: #000000;" title="Черный"></button>
+                        <input type="color" id="colorPicker" value="#ff0000" class="color-input" title="Свой цвет">
+                    </div>
+
+                    <input type="range" id="sizeSlider" min="1" max="20" value="3" class="size-slider">
+                    <div class="tool-sep"></div>
+                    <button class="tool-btn" id="undoBtn" title="Отменить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-15-6.7L3 13"/></svg></button>
+                    <button class="tool-btn" id="redoBtn" title="Вернуть"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 7v6h-6"/><path d="M3 17a9 9 0 0 1 15-6.7L21 13"/></svg></button>
+                    <div class="tool-sep"></div>
+                    <button class="tool-btn" id="btn-copy" title="Копировать"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                    <button class="tool-btn" id="btn-save" title="Сохранить"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg></button>
+                    
+                    <div class="publish-group">
+                        <button class="tool-btn" id="btn-publish" title="Опубликовать"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg></button>
+                        <button class="publish-trigger" id="btn-publish-options" title="Настройки жизни скриншота">
+                            <span id="publish-mode-icon">♾️</span>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"/></svg>
+                        </button>
+                        <div class="publish-dropdown" id="publish-dropdown">
+                            <div class="publish-option active" data-mode="default" data-text="Без ограничений" data-icon="♾️">♾️ Без ограничений (Зашифровано)</div>
+                            <div class="publish-option" data-mode="password" data-text="Запросить пароль" data-icon="🔑">🔑 Запросить пароль (Зашифровано)</div>
+                            <div class="publish-option" data-mode="directlink" data-text="Прямая ссылка (Без шифрования)" data-icon="🌐">🌐 Прямая ссылка</div>
+                            <div class="publish-option" data-mode="1view" data-text="Удалить после 1 просмотра" data-icon="👁️">👁️ После 1 просмотра</div>
+                            <div class="publish-option" data-mode="1hour" data-text="Удалить через 1 час" data-icon="⏳">⏳ Через 1 час</div>
+                            <div class="publish-option" data-mode="24hours" data-text="Удалить через 24 часа" data-icon="🕒">🕒 Через 24 часа</div>
+                            <div class="publish-option" data-mode="7days" data-text="Удалить через 7 дней" data-icon="🗓️">🗓️ Через 7 дней</div>
+                        </div>
+                    </div>
+
+                    <button class="tool-btn" id="btn-cancel" title="Отмена"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+                </div>
+            </div>
+    </div>
+
+
+    <div id="publishing-overlay" class="publish-overlay">
+        <div class="publish-modal">
+            <div class="spinner" id="publish-spinner"></div>
+            <div class="publish-text" id="publish-status-text">Шифрование и загрузка в IPFS...</div>
+        </div>
+    </div>
+    <div id="password-prompt-modal" class="modal-overlay" style="z-index: 10001;">
+        <div class="modal-content" style="width: 320px;">
+            <h3 style="margin-bottom: 15px;">🔒 Защита паролем</h3>
+            <p style="font-size: 13px; margin-bottom: 15px;">Введите пароль. Без него скриншот не смогут открыть даже по ссылке.</p>
+            <input type="password" id="pwd-input-field" class="form-input" style="text-align: center; margin-bottom: 10px;" placeholder="Ваш пароль">
+            <div id="pwd-prompt-error" style="color: #ef4444; font-size: 12px; margin-bottom: 10px; display: none;">Пароль не может быть пустым</div>
+            <div class="modal-checkbox" style="margin-bottom: 20px;">
+                <input type="checkbox" id="short-link-check">
+                <label for="short-link-check">Короткая ссылка (без # в конце)</label>
+            </div>
+            <div class="modal-actions">
+                <button id="pwd-prompt-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+                <button id="pwd-prompt-ok" class="btn btn-sm">Опубликовать</button>
+            </div>
+        </div>
+    </div>
+    <div id="status-text">Выделите область мышкой</div>
+    <div id="toast"></div>
+</div>
+
+<!-- Модальное окно предупреждения о прямой ссылке -->
+<div id="direct-link-warning-modal" class="modal-overlay" style="z-index: 10002;">
+    <div class="modal-content" style="width: 360px;">
+        <h3 style="margin-bottom: 15px; color: #f59e0b;">⚠️ Внимание: Публичный доступ!</h3>
+        <p style="font-size: 13px; margin-bottom: 15px; line-height: 1.5;">Вы выбрали режим "Прямая ссылка". В этом режиме <strong>шифрование и пароль отключаются</strong>. Ваш скриншот загрузится в сеть IPFS в открытом виде.</p>
+        <p style="font-size: 13px; margin-bottom: 20px; line-height: 1.5;">Любой человек, знающий ссылку, сможет его просмотреть. Кроме того, файл может быть найден другими пользователями в публичной сети IPFS.</p>
+        <div class="modal-actions">
+            <button id="dl-warning-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+            <button id="dl-warning-ok" class="btn btn-sm" style="background: #f59e0b;">Да, опубликовать публично</button>
+        </div>
+    </div>
+</div>
+
+
+    <!-- НОВОЕ: Модальное окно предупреждения о переводчике -->
+    <div id="translate-warning-modal" class="modal-overlay" style="z-index: 10003;">
+        <div class="modal-content" style="width: 380px; text-align: center;">
+            <h3 style="margin-bottom: 15px; color: #f59e0b;">⚠️ Внимание: Конфиденциальность</h3>
+            <p style="font-size: 13px; margin-bottom: 15px; line-height: 1.5;">
+                Использование переводчика отправляет распознанный текст на серверы Google/MyMemory.<br>
+                Это нарушает режим <strong>Zero-Knowledge</strong>. Текст скриншота может покинуть ваш ПК.
+            </p>
+            <div class="modal-checkbox" style="margin-bottom: 20px; text-align: left;">
+                <input type="checkbox" id="warn-translate-check">
+                <label for="warn-translate-check">Больше не предупреждать меня</label>
+            </div>
+            <div class="modal-actions">
+                <button id="warn-translate-cancel" class="btn btn-secondary">Отмена</button>
+                <button id="warn-translate-ok" class="btn" style="background: #f59e0b;">Понятно, перевести</button>
+            </div>
+        </div>
+    </div>
+
+
+<!-- Кастомное модальное окно подтверждения -->
+<div id="confirm-modal" class="modal-overlay">
+    <div class="modal-content">
+        <h3 id="modal-title">Внимание</h3>
+        <p id="modal-text">Выйти из режима редактирования? Все несохраненные изменения будут потеряны.</p>
+        <div class="modal-checkbox">
+            <input type="checkbox" id="modal-dont-show">
+            <label for="modal-dont-show">Больше не показывать</label>
+        </div>
+        <div class="modal-actions">
+            <button id="modal-cancel" class="btn btn-secondary">Отмена</button>
+            <button id="modal-exit" class="btn btn-danger">Выйти</button>
+        </div>
+    </div>
+</div>
+
+<!-- Модальное окно настроек прокси -->
+<div id="proxy-modal" class="modal-overlay">
+    <div class="modal-content" style="width: 360px; text-align: left;">
+        <h3 style="text-align: center; margin-bottom: 15px;">Настройки прокси</h3>
+        <div class="form-group">
+            <label class="form-label">Тип прокси:</label>
+            <select id="proxyTypeSelect" class="form-input" style="width: 100%; box-sizing: border-box;">
+                <option value="http">HTTP / HTTPS</option>
+                <option value="socks5">SOCKS5</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label class="form-label">Хост (IP):</label>
+            <input type="text" id="proxyHostInput" class="form-input" style="width: 100%; box-sizing: border-box;" placeholder="127.0.0.1">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Порт:</label>
+            <input type="text" id="proxyPortInput" class="form-input" style="width: 100%; box-sizing: border-box;" placeholder="8080">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Логин (необязательно):</label>
+            <input type="text" id="proxyUserInput" class="form-input" style="width: 100%; box-sizing: border-box;" placeholder="user">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Пароль (необязательно):</label>
+            <input type="password" id="proxyPassInput" class="form-input" style="width: 100%; box-sizing: border-box;" placeholder="••••••">
+        </div>
+        <div id="proxy-test-result" style="font-size: 12px; margin: 10px 0 15px 0; min-height: 18px; text-align: center; word-break: break-word;"></div>
+        <div class="modal-actions" style="justify-content: space-between; width: 100%; box-sizing: border-box;">
+            <button id="proxy-test-btn" class="btn btn-secondary btn-sm">Проверить</button>
+            <div style="display: flex; gap: 10px;">
+                <button id="proxy-cancel" class="btn btn-secondary btn-sm">Отмена</button>
+                <button id="proxy-save" class="btn btn-sm">Сохранить</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
